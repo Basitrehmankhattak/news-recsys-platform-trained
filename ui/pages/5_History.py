@@ -7,23 +7,50 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from style import load_css
 
 load_css()
-API="http://127.0.0.1:8000"
+API = "http://127.0.0.1:8000"
 
+# -----------------------
+# Auth Guard
+# -----------------------
 if "session_id" not in st.session_state:
     st.switch_page("pages/1_Login.py")
 
-st.markdown("<div class='title-center'>📜 Click History</div>",
-            unsafe_allow_html=True)
+# -----------------------
+# Title
+# -----------------------
+st.markdown(
+    "<div class='title-center'>📜 Click History</div>",
+    unsafe_allow_html=True
+)
 
-r=requests.get(f"{API}/history/{st.session_state.session_id}")
+# -----------------------
+# Fetch History
+# -----------------------
+r = requests.get(f"{API}/history/{st.session_state.session_id}")
 
-if r.status_code!=200:
+if r.status_code != 200:
     st.error("Failed loading history")
-else:
-    data=r.json()
-    if not data:
-        st.info("No clicks yet")
-    else:
-        for h in data:
-            st.markdown(f"<div class='card'>{h['title']}</div>",
-                        unsafe_allow_html=True)
+    st.stop()
+
+data = r.json()
+
+if not data:
+    st.info("No clicks yet")
+    st.stop()
+
+# -----------------------
+# Display
+# -----------------------
+for i, h in enumerate(data, start=1):
+    title = h.get("title", "Untitled Article")
+    clicked_at = h.get("clicked_at", "")
+
+    st.markdown(
+        f"""
+        <div class='card'>
+            <b>{i}. {title}</b><br>
+            <small>{clicked_at}</small>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
