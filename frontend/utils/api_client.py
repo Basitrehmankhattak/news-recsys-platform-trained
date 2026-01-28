@@ -200,6 +200,35 @@ class APIClient:
         except requests.RequestException as e:
             return None
 
+    def get_user_settings(self, anonymous_id: str) -> Optional[Dict]:
+        """Get user settings"""
+        try:
+            response = self.session.get(
+                f"{self.base_url}/settings/{anonymous_id}",
+                timeout=10
+            )
+            response.raise_for_status()
+            return response.json()
+        except requests.RequestException:
+            return None
+
+    def update_user_settings(self, anonymous_id: str, settings: Dict) -> bool:
+        """Update user settings"""
+        try:
+            # ensure anonymous_id is in payload
+            settings['anonymous_id'] = anonymous_id
+            
+            response = self.session.post(
+                f"{self.base_url}/settings/{anonymous_id}",
+                json=settings,
+                timeout=10
+            )
+            response.raise_for_status()
+            return True
+        except requests.RequestException:
+            return False
+
+
 @st.cache_resource
 def get_api_client() -> APIClient:
     """Get cached API client instance"""

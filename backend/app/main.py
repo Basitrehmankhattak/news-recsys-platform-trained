@@ -6,6 +6,7 @@ from backend.app.routes.clicks import router as clicks_router
 from backend.app.routes.user_stats import router as user_stats_router
 from backend.app.routes.analytics import router as analytics_router
 from backend.app.routes.items import router as items_router
+from backend.app.routes.settings import router as settings_router
 from backend.app.retrieval.faiss_store import get_store
 
 app = FastAPI(title="News Recsys Platform API", version="0.1.0")
@@ -17,6 +18,7 @@ app.include_router(clicks_router)
 app.include_router(user_stats_router)
 app.include_router(analytics_router)
 app.include_router(items_router)
+app.include_router(settings_router)
 
 @app.on_event("startup")
 def startup_event():
