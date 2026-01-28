@@ -1,9 +1,9 @@
-from fastapi import FastAPI
-from backend.app.db import get_conn
+from fastapi import FastAPI, Depends
+from backend.app.db import get_db
 from backend.app.routes.session import router as session_router
 from backend.app.routes.recommendations import router as recommendations_router
 from backend.app.routes.clicks import router as clicks_router
-from backend.app.retrieval.faiss_store import get_store  # ✅ add this
+from backend.app.retrieval.faiss_store import get_store
 
 app = FastAPI(title="News Recsys Platform API", version="0.1.0")
 
@@ -14,15 +14,19 @@ app.include_router(clicks_router)
 
 @app.on_event("startup")
 def startup_event():
-    print("[startup] loading FAISS store...")
-    get_store()
-    print("[startup] FAISS store loaded ✅")
+    print("[startup] FAISS loading disabled for SQLite testing")
+    # Temporarily disabled - FAISS assets not available yet
+    # print("[startup] loading FAISS store...")
+    # get_store()
+    # print("[startup] FAISS store loaded ✅")
 
 
 @app.get("/health")
-def health():
-    with get_conn() as conn:
-        with conn.cursor() as cur:
-            cur.execute("SELECT 1;")
-            value = cur.fetchone()[0]
-    return {"status": "ok", "db": value}
+def health(db = Depends(get_db)):
+    """Health check endpoint - verifies SQLite connection"""
+    try:
+        # Simple query to verify SQLite connection
+        db.execute("SELECT 1")
+        return {"status": "ok", "db": "connected"}
+    except Exception as e:
+        return {"status": "error", "db": str(e)}

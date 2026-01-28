@@ -2,7 +2,7 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    database_url: str
+    mongodb_uri: str
     app_env: str = "dev"
 
     class Config:
