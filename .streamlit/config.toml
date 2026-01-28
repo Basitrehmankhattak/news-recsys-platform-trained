@@ -1,0 +1,7 @@
+[theme]
+base = "light"
+primaryColor = "#1F6FEB"              # professional blue
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F6F8FA"  # soft panel background
+textColor = "#111827"                 # near-black
+font = "sans serif"
