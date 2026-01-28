@@ -17,7 +17,7 @@ from backend.app.retrieval.faiss_store import get_store
 router = APIRouter(prefix="/recommendations", tags=["recommendations"])
 
 # Retrieval settings (industry-style defaults for now)
-WARM_MIN_CLICKS = 1          # warm user if they have at least 1 click
+WARM_MIN_CLICKS = 0        # warm user if they have at least 1 click
 CANDIDATE_TOP_K = 200        # retrieve this many from FAISS then take page_size
 
 # ----------------------------
@@ -144,27 +144,40 @@ def _fetch_titles_for_items(cur, item_ids: list[str]) -> dict[str, str]:
     return {row[0]: row[1] for row in cur.fetchall()}
 
 
-def _faiss_retrieve_candidates(clicked_item_ids: list[str], top_k: int) -> list[tuple[str, float]]:
+def _faiss_retrieve_candidates(
+    clicked_item_ids: list[str],
+    top_k: int
+) -> list[tuple[str, float]]:
     """
-    Build user vector from clicked embeddings and retrieve candidates from FAISS.
-    Returns ranked list of (candidate_item_id, faiss_score).
-    Score is inner-product on L2-normalized vectors => cosine similarity.
+    FAISS semantic retrieval.
+    If user has no clicks yet, use a random seed vector to trigger FAISS.
     """
-    store = get_store()
+    print("FAISS RETRIEVAL CALLED")  # 👈 debug + confirmation
 
+    store = get_store()  # 🔥 THIS WILL NOW ALWAYS LOAD FAISS
+
+    # -------------------------
+    # Case 1: Warm user (has clicks)
+    # -------------------------
     rows = [store.id2row[cid] for cid in clicked_item_ids if cid in store.id2row]
-    if not rows:
-        return []
 
-    user_vec = store.embeddings[rows].mean(axis=0, keepdims=True).astype(np.float32)
+    if rows:
+        user_vec = store.embeddings[rows].mean(axis=0, keepdims=True).astype(np.float32)
+    else:
+        # -------------------------
+        # Case 2: Cold user → random seed vector
+        # -------------------------
+        rand_idx = np.random.randint(0, store.embeddings.shape[0])
+        user_vec = store.embeddings[rand_idx : rand_idx + 1]
+
     faiss.normalize_L2(user_vec)
 
     scores, idxs = store.index.search(user_vec, top_k)
 
-    out: list[tuple[str, float]] = []
-    for s, i in zip(scores[0].tolist(), idxs[0].tolist()):
-        out.append((str(store.news_ids[i]), float(s)))
-    return out
+    return [
+        (str(store.news_ids[i]), float(s))
+        for s, i in zip(scores[0], idxs[0])
+    ]
 
 
 # ----------------------------
