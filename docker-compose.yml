@@ -1,7 +1,9 @@
 version: "3.9"
+
 services:
   postgres:
     image: postgres:16
+    container_name: newsrec-postgres
     environment:
       POSTGRES_USER: newsrec
       POSTGRES_PASSWORD: newsrec
@@ -10,5 +12,16 @@ services:
       - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+
+  backend:
+    build: ./backend
+    container_name: newsrec-backend
+    depends_on:
+      - postgres
+    environment:
+      DATABASE_URL: postgresql://newsrec:newsrec@postgres:5432/newsrec
+    ports:
+      - "8000:8000"
+
 volumes:
   pgdata:
