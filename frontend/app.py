@@ -62,11 +62,24 @@ with st.sidebar:
         
         # Quick stats
         st.markdown("### Quick Stats")
+        
+        # Fetch real stats
+        try:
+            client = get_api_client()
+            if 'anonymous_id' in st.session_state:
+                stats = client.get_user_stats(st.session_state.anonymous_id)
+            else:
+                stats = None
+        except Exception:
+            stats = None
+
         col1, col2 = st.columns(2)
         with col1:
-            st.metric("Articles Read", "24")
+             val = str(stats.get('total_clicks', 0)) if stats else "0"
+             st.metric("Articles Read", val)
         with col2:
-            st.metric("Active Days", "12")
+             val = str(stats.get('active_days', 0)) if stats else "0"
+             st.metric("Active Days", val)
         
         st.divider()
         

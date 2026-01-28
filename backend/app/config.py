@@ -2,7 +2,7 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    mongodb_uri: str
+    database_url: str = "postgresql://newsrec:newsrec@localhost:5433/newsrec"
     app_env: str = "dev"
 
     class Config:

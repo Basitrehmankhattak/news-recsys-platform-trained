@@ -30,7 +30,8 @@ class APIClient:
             response.raise_for_status()
             return response.json().get("session_id")
         except requests.RequestException as e:
-            st.error(f"Error starting session: {str(e)}")
+            # Backend session is optional - silently fail
+            # st.error(f"Error starting session: {str(e)}")
             return None
 
     def get_recommendations(self, session_id: str, user_id: int = None, 
@@ -60,7 +61,8 @@ class APIClient:
             response.raise_for_status()
             return response.json()
         except requests.RequestException as e:
-            st.error(f"Error fetching recommendations: {str(e)}")
+            # Backend recommendations are optional - silently fail
+            # st.error(f"Error fetching recommendations: {str(e)}")
             return None
     
     def record_click(self, impression_id: str, item_id: str, position: int, 
@@ -114,11 +116,83 @@ class APIClient:
             # st.error(f"Error fetching content: {str(e)}")
             return None
     
-    def get_system_metrics(self) -> Optional[Dict]:
-        """Get system metrics"""
+    def get_user_history(self, anonymous_id: str, limit: int = 50) -> Optional[List[Dict]]:
+        """Get user reading history"""
         try:
             response = self.session.get(
-                f"{self.base_url}/metrics",
+                f"{self.base_url}/users/{anonymous_id}/history",
+                params={"limit": limit},
+                timeout=10
+            )
+            response.raise_for_status()
+            return response.json()
+        except requests.RequestException:
+            return None
+
+    def get_user_analytics(self, anonymous_id: str) -> Optional[Dict]:
+        """Get personalized analytics"""
+        try:
+            response = self.session.get(
+                f"{self.base_url}/users/{anonymous_id}/analytics",
+                timeout=10
+            )
+            response.raise_for_status()
+            return response.json()
+        except requests.RequestException:
+            return None
+
+    def get_system_analytics(self) -> Optional[Dict]:
+        """Get system-wide analytics"""
+        try:
+            response = self.session.get(
+                f"{self.base_url}/analytics/system",
+                timeout=10
+            )
+            response.raise_for_status()
+            return response.json()
+        except requests.RequestException:
+            return None
+
+    def get_trending_analytics(self) -> Optional[Dict]:
+        """Get trending analytics"""
+        try:
+            response = self.session.get(
+                f"{self.base_url}/analytics/trending",
+                timeout=10
+            )
+            response.raise_for_status()
+            return response.json()
+        except requests.RequestException:
+            return None
+
+    def search_items(self, q: str = None, category: str = None, sort_by: str = "recent", page: int = 1, size: int = 20) -> Optional[Dict]:
+        """Search and filter items"""
+        try:
+            params = {
+                "sort_by": sort_by,
+                "page": page,
+                "size": size
+            }
+            if q:
+                params["q"] = q
+            if category:
+                params["category"] = category
+                
+            response = self.session.get(
+                f"{self.base_url}/items",
+                params=params,
+                timeout=10
+            )
+            response.raise_for_status()
+            return response.json()
+        except requests.RequestException:
+            return None
+
+    def get_user_stats(self, anonymous_id: str) -> Optional[Dict]:
+        """Get user statistics"""
+        try:
+            response = self.session.get(
+                f"{self.base_url}/users/{anonymous_id}/stats",
                 timeout=10
             )
             response.raise_for_status()

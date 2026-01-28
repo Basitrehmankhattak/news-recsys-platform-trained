@@ -75,12 +75,45 @@ def render_article_card(article: dict, col_num: int = 1):
                 st.rerun()
         with col2:
             if st.button("Like", key=f"like_{article['id']}", use_container_width=True):
+                # Record like to backend
+                if 'session_id' in st.session_state:
+                    imp_id = article.get('impression_id')
+                    if imp_id:
+                        client = get_api_client()
+                        client.record_click(
+                            impression_id=imp_id,
+                            item_id=article['id'],
+                            position=article.get('position', 0),
+                            open_type="like"
+                        )
                 st.success(f"Liked: {article.get('title', '')[:30]}...")
         with col3:
             if st.button("Save", key=f"save_{article['id']}", use_container_width=True):
+                # Record save to backend
+                if 'session_id' in st.session_state:
+                    imp_id = article.get('impression_id')
+                    if imp_id:
+                        client = get_api_client()
+                        client.record_click(
+                            impression_id=imp_id,
+                            item_id=article['id'],
+                            position=article.get('position', 0),
+                            open_type="save"
+                        )
                 st.info(f"Saved for later")
         with col4:
             if st.button("Share", key=f"share_{article['id']}", use_container_width=True):
+                # Record share to backend
+                if 'session_id' in st.session_state:
+                    imp_id = article.get('impression_id')
+                    if imp_id:
+                        client = get_api_client()
+                        client.record_click(
+                            impression_id=imp_id,
+                            item_id=article['id'],
+                            position=article.get('position', 0),
+                            open_type="share"
+                        )
                 st.info("Share options would appear here")
 
 def render_page():
@@ -111,8 +144,20 @@ def render_page():
     # Filters (Frontend only for now, as backend only takes basic params)
     st.markdown("### Filters & Preferences")
     col1, col2, col3, col4 = st.columns(4)
+    
+    with col3:
+        # Number input field - user can type any number
+        limit = st.number_input(
+            "Show (articles)", 
+            min_value=1, 
+            max_value=500, 
+            value=10, 
+            step=1, 
+            key="feed_limit",
+            help="Enter any number from 1 to 500"
+        )
+    
     with col4:
-        limit = st.selectbox("Show", [10, 20, 50], index=0, key="feed_limit")
         if st.button("Refresh Feed", use_container_width=True):
             st.session_state.current_recommendations = [] # clear to force refetch
             st.rerun()
@@ -139,15 +184,15 @@ def render_page():
                     mapped_items.append({
                         "id": item.get('item_id'),
                         "title": item.get('title') or "Untitled Article",
-                        "abstract": "Click to read more...", # Backend doesn't provide abstract yet
-                        "category": "General", # Backend doesn't provide category yet
-                        "subcategory": "",
+                        "abstract": item.get('abstract') or "No preview available.",
+                        "category": item.get('category') or "General",
+                        "subcategory": item.get('subcategory') or "",
                         "source": "MIND News",
                         "score": item.get('final_score') or 0.0,
                         "date": "Recently",
                         "image": "",
                         "entities": [],
-                        "body_preview": "Full content not available in preview.",
+                        "body_preview": item.get('abstract') or "Full content not available in preview.",
                         "impression_id": impression_id,
                         "position": item.get('position')
                     })
@@ -211,7 +256,6 @@ def render_article_detail():
     
     # Interactions
     col1, col2, col3 = st.columns(3)
-    with col1:
     with col1:
         if st.button("I Like This", use_container_width=True):
              # FIXED: Now actually correctly records the data to backend.db

@@ -31,6 +31,23 @@ def init_session_state():
     if 'page' not in st.session_state:
         st.session_state.page = 'Home'
         
+    # Try to restore session from query parameter
+    if not st.session_state.authenticated:
+        query_params = st.query_params
+        if 'session_token' in query_params:
+            from database.db_init import validate_session_token
+            session_token = query_params['session_token']
+            result = validate_session_token(session_token)
+            
+            if result['success']:
+                # Restore session
+                st.session_state.authenticated = True
+                st.session_state.user_id = result['user_id']
+                st.session_state.username = result['username']
+                st.session_state.email = result['email']
+                st.session_state.full_name = result['full_name']
+                st.session_state.session_token = result['session_token']
+        
     # Session tracking
     if 'anonymous_id' not in st.session_state:
         st.session_state.anonymous_id = str(uuid.uuid4())
@@ -47,7 +64,7 @@ def init_session_state():
             pass
 
 
-def login_user(username: str, password: str) -> bool:
+def login_user(username: str, password: str) -> dict:
     """Login user"""
     result = authenticate_user(username, password)
     
@@ -58,8 +75,12 @@ def login_user(username: str, password: str) -> bool:
         st.session_state.email = result['email']
         st.session_state.full_name = result['full_name']
         st.session_state.session_token = result['session_token']
-        return True
-    return False
+        
+        # Set session token in URL query parameters for persistence
+        st.query_params['session_token'] = result['session_token']
+        
+        return result
+    return result
 
 def signup_user(username: str, email: str, password: str, full_name: str) -> dict:
     """Register new user"""

@@ -36,6 +36,10 @@ class RecommendedItem(BaseModel):
     rank_score: Optional[float] = None
     final_score: Optional[float] = None
     title: Optional[str] = None
+    abstract: Optional[str] = None
+    category: Optional[str] = None
+    subcategory: Optional[str] = None
+    url: Optional[str] = None
 
 
 class RecommendationResponse(BaseModel):

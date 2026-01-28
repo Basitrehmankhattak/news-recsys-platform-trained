@@ -1,5 +1,5 @@
 # Start Frontend Application
-Write-Host "🎨 Starting Frontend Application..." -ForegroundColor Cyan
+Write-Host " Starting Frontend Application..." -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Frontend will be available at: http://localhost:8501" -ForegroundColor Green
 Write-Host ""

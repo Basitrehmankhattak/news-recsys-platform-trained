@@ -39,6 +39,11 @@ def render_login_page():
     with col2:
         st.markdown("## Login to Your Account")
         
+        # Display signup success message if it exists
+        if 'signup_success_message' in st.session_state:
+            create_alert(st.session_state.signup_success_message, "success")
+            del st.session_state.signup_success_message  # Remove after displaying
+        
         with st.form("login_form", clear_on_submit=False):
             username = st.text_input(
                 "Username",
@@ -90,12 +95,13 @@ def render_login_page():
                 if not username or not password:
                     create_alert("Please fill in all fields.", "error")
                 else:
-                    if login_user(username, password):
+                    auth_result = login_user(username, password)
+                    if auth_result['success']:
                         create_alert("Login successful! Redirecting...", "success")
                         st.balloons()
                         st.rerun()
                     else:
-                        create_alert("Invalid username or password.", "error")
+                        create_alert(auth_result.get('message', "Invalid username or password."), "error")
         
         st.divider()
         
@@ -217,13 +223,17 @@ def render_signup_page():
                     result = signup_user(username, email, password, full_name)
                     
                     if result['success']:
-                        st.session_state.signup_user_id = result['user_id']
-                        st.session_state.signup_verification_code = result.get('verification_code', '')
-                        st.session_state.page = "Email Verification"
-                        create_alert(
-                            f"Account created! Verification code: {result.get('verification_code', 'sent to email')}",
-                            "success"
-                        )
+                        # Show success message with balloons
+                        st.balloons()
+                        st.success("🎉 Account created successfully! Redirecting to login...")
+                        
+                        # Auto-verified, go straight to login
+                        st.session_state.page = "Login"
+                        st.session_state.signup_success_message = "✅ Account created successfully! You can now log in."
+                        
+                        # Small delay to show the message
+                        import time
+                        time.sleep(1)
                         st.rerun()
                     else:
                         create_alert(f"{result['message']}", "error")
@@ -252,10 +262,11 @@ def render_verification_page():
         st.error("Session expired. Please sign up again.")
         st.stop()
     
-    create_alert(
-        f"Verification code has been sent to your email. Enter it below to complete registration.",
-        "info"
-    )
+    verify_msg = "Verification code has been sent to your email."
+    if 'signup_verification_code' in st.session_state:
+        verify_msg += f" (DEMO: Your code is {st.session_state.signup_verification_code})"
+    
+    create_alert(verify_msg, "info")
     
     with st.form("verification_form"):
         verification_code = st.text_input(

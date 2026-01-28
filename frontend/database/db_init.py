@@ -124,6 +124,50 @@ def generate_session_token() -> str:
     """Generate a secure session token"""
     return secrets.token_urlsafe(32)
 
+def validate_session_token(session_token: str) -> dict:
+    """Validate a session token and return user data if valid"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        # Check if session exists and is active
+        cursor.execute('''
+            SELECT s.*, u.username, u.email, u.full_name
+            FROM sessions s
+            JOIN users u ON s.user_id = u.user_id
+            WHERE s.session_token = ? AND s.is_active = 1
+        ''', (session_token,))
+        
+        session = cursor.fetchone()
+        
+        if not session:
+            return {'success': False, 'message': 'Invalid or expired session'}
+        
+        # Check if session has expired
+        if session['expires_at']:
+            from datetime import datetime
+            expires_at = datetime.fromisoformat(session['expires_at'])
+            if datetime.now() > expires_at:
+                # Deactivate expired session
+                cursor.execute('''
+                    UPDATE sessions SET is_active = 0 WHERE session_token = ?
+                ''', (session_token,))
+                conn.commit()
+                return {'success': False, 'message': 'Session expired'}
+        
+        return {
+            'success': True,
+            'user_id': session['user_id'],
+            'username': session['username'],
+            'email': session['email'],
+            'full_name': session['full_name'],
+            'session_token': session_token
+        }
+    
+    finally:
+        conn.close()
+
+
 def register_user(username: str, email: str, password: str, full_name: str = "") -> dict:
     """Register a new user"""
     conn = get_db_connection()
@@ -133,27 +177,28 @@ def register_user(username: str, email: str, password: str, full_name: str = "")
         password_hash = hash_password(password)
         verification_code = generate_verification_code()
         
+        # AUTO-VERIFY for demo purposes (set is_verified = 1)
         cursor.execute('''
             INSERT INTO users (username, email, password_hash, full_name, is_verified)
             VALUES (?, ?, ?, ?, ?)
-        ''', (username, email, password_hash, full_name, 0))
+        ''', (username, email, password_hash, full_name, 1))  # Changed from 0 to 1
         
         user_id = cursor.lastrowid
         
-        # Generate verification code
-        expires_at = datetime.now().isoformat()  # In production, set to +1 hour
+        # Generate verification code (kept for compatibility but not required)
+        expires_at = datetime.now().isoformat()
         cursor.execute('''
-            INSERT INTO email_verifications (user_id, verification_code, expires_at)
-            VALUES (?, ?, ?)
-        ''', (user_id, verification_code, expires_at))
+            INSERT INTO email_verifications (user_id, verification_code, expires_at, is_used)
+            VALUES (?, ?, ?, ?)
+        ''', (user_id, verification_code, expires_at, 1))  # Mark as already used
         
         conn.commit()
         
         return {
             "success": True,
             "user_id": user_id,
-            "message": "User registered successfully. Verification code sent to email.",
-            "verification_code": verification_code  # In production, send via email
+            "message": "User registered successfully and auto-verified for demo.",
+            "verification_code": verification_code
         }
     except sqlite3.IntegrityError as e:
         return {
@@ -199,13 +244,22 @@ def authenticate_user(username: str, password: str) -> dict:
         cursor.execute('SELECT * FROM users WHERE username = ?', (username,))
         user = cursor.fetchone()
         
+        print(f"DEBUG: Login attempt for '{username}'")
         if not user:
+            print("DEBUG: User not found in DB")
             return {"success": False, "message": "Invalid username or password."}
         
+        print(f"DEBUG: User found. ID: {user['user_id']}, Verified: {user['is_verified']}")
+        
         if not verify_password(password, user['password_hash']):
+            print("DEBUG: Password mismatch")
+            # For debugging, let's print hashes (be careful in production!)
+            print(f"DEBUG: Input hash: {hash_password(password)}")
+            print(f"DEBUG: Stored hash: {user['password_hash']}")
             return {"success": False, "message": "Invalid username or password."}
         
         if not user['is_verified']:
+            print("DEBUG: User not verified")
             return {"success": False, "message": "Please verify your email first."}
         
         # Create session

@@ -3,6 +3,9 @@ from backend.app.db import get_db
 from backend.app.routes.session import router as session_router
 from backend.app.routes.recommendations import router as recommendations_router
 from backend.app.routes.clicks import router as clicks_router
+from backend.app.routes.user_stats import router as user_stats_router
+from backend.app.routes.analytics import router as analytics_router
+from backend.app.routes.items import router as items_router
 from backend.app.retrieval.faiss_store import get_store
 
 app = FastAPI(title="News Recsys Platform API", version="0.1.0")
@@ -11,10 +14,14 @@ app = FastAPI(title="News Recsys Platform API", version="0.1.0")
 app.include_router(session_router)
 app.include_router(recommendations_router)
 app.include_router(clicks_router)
+app.include_router(user_stats_router)
+app.include_router(analytics_router)
+app.include_router(items_router)
 
 @app.on_event("startup")
 def startup_event():
-    print("[startup] FAISS loading disabled for SQLite testing")
+    print("[startup] Using SQLite database (PostgreSQL Docker has compatibility issues)")
+    print("[startup] FAISS loading disabled for initial testing")
     # Temporarily disabled - FAISS assets not available yet
     # print("[startup] loading FAISS store...")
     # get_store()
