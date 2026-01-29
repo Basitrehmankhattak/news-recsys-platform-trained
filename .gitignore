@@ -8,3 +8,35 @@ __pycache__/
 
 # Env
 .env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+
+# Virtual env
+.venv/
+venv/
+
+# Env files
+.env
+.env.*
+
+# Streamlit
+.streamlit/
+
+# Data
+data/raw/
+data/processed/
+*.parquet
+
+# FAISS / model artifacts (optional)
+*.index
+*.bin
+*.joblib
+*.pkl
+
+# OS
+.DS_Store

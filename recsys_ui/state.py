@@ -1,34 +1,34 @@
-import os
 import uuid
+import time
 import streamlit as st
 
 def ensure_state():
-    st.session_state.setdefault("demo", {})
-    d = st.session_state["demo"]
+    if "anonymous_id" not in st.session_state:
+        st.session_state.anonymous_id = f"anon_{uuid.uuid4().hex[:10]}"
 
-    d.setdefault("anonymous_id", f"anon_{uuid.uuid4().hex[:6]}")
-    d.setdefault("session_id", str(uuid.uuid4()))
+    if "session_id" not in st.session_state:
+        st.session_state.session_id = str(uuid.uuid4())
 
-    d.setdefault("device_type", "web")
-    d.setdefault("app_version", "v1")
-    d.setdefault("user_agent", "streamlit-ui")
-    d.setdefault("referrer", "ui_demo")
+    if "dev_mode" not in st.session_state:
+        st.session_state.dev_mode = False
 
-    d.setdefault("page_size", int(os.getenv("DEFAULT_PAGE_SIZE", "10")))
-    d.setdefault("surface", os.getenv("DEFAULT_SURFACE", "home"))
-    d.setdefault("locale", os.getenv("DEFAULT_LOCALE", "en-US"))
+    if "user_status" not in st.session_state:
+        st.session_state.user_status = "unknown"
 
-    # click extras
-    d.setdefault("dwell_ms", 0)
-    d.setdefault("open_type", "feed")
+    if "last_impression_id" not in st.session_state:
+        st.session_state.last_impression_id = None
 
-def new_session():
-    st.session_state["demo"]["session_id"] = str(uuid.uuid4())
-    st.session_state.pop("last_rec", None)
+    if "last_recs" not in st.session_state:
+        st.session_state.last_recs = []
 
-def normalize_items(rec_json: dict):
-    # Your backend returns `items`
-    return rec_json.get("items", [])
+    if "dwell_start" not in st.session_state:
+        st.session_state.dwell_start = {}
 
-def get_impression_id(rec_json: dict) -> str:
-    return str(rec_json.get("impression_id", "unknown"))
+def start_dwell(item_id: str):
+    st.session_state.dwell_start[item_id] = time.time()
+
+def get_dwell_ms(item_id: str) -> int:
+    start = st.session_state.dwell_start.get(item_id)
+    if not start:
+        return 0
+    return int(max(0.0, (time.time() - start) * 1000))
