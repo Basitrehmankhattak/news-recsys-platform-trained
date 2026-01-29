@@ -53,6 +53,25 @@ else:
 
 
 # ----------------------------
+# Session helper (FK safety)
+# ----------------------------
+def _ensure_session_exists(cur, session_id: str):
+    """
+    FK safety:
+    impressions_served.session_id references sessions.session_id.
+    Streamlit generates new session_ids, so we must insert sessions row if missing.
+    """
+    cur.execute(
+        """
+        INSERT INTO sessions(session_id)
+        VALUES (%s)
+        ON CONFLICT (session_id) DO NOTHING;
+        """,
+        (session_id,),
+    )
+
+
+# ----------------------------
 # Feature helpers (v4)
 # ----------------------------
 def _get_user_click_count(cur, anonymous_id: str) -> int:
@@ -168,7 +187,7 @@ def _faiss_retrieve_candidates(clicked_item_ids: list[str], top_k: int) -> list[
 
 
 # ----------------------------
-# Diversity reranker (Phase 9.2 - stable for cold users)
+# Diversity reranker (stable for cold users)
 # ----------------------------
 _STOPWORDS = {
     "the", "a", "an", "and", "or", "to", "of", "in", "on", "for", "with", "at", "by", "from",
@@ -190,16 +209,10 @@ def _rerank_diversity(
     penalty_cap: float = 0.30,
 ) -> list[dict]:
     """
-    MMR-style greedy diversity reranker with *fractional* penalty (safe for cold users).
+    MMR-style greedy diversity reranker with fractional penalty.
 
-    For each next slot:
-      penalty_frac = min(penalty_cap, lambda * max_jaccard_sim(selected, candidate))  in [0, 1]
-      final_score  = rank_score * (1 - penalty_frac)
-
-    Notes:
-    - Similarity uses Jaccard on token sets (0..1).
-    - penalty_cap is a maximum fraction (e.g., 0.30 => at most 30% downweight).
-    - We return items in the greedy selected order (served order). No sorting at the end.
+    penalty_frac = min(penalty_cap, lambda * max_jaccard_sim(selected, candidate))
+    final_score  = rank_score * (1 - penalty_frac)
     """
     if not ranked:
         return ranked
@@ -222,7 +235,7 @@ def _rerank_diversity(
     selected: list[dict] = []
     first = remaining.pop(0)
     first["final_score"] = float(first["rank_score"])
-    first["retrieval_pos"] = int(first.get("retrieval_pos", 0))  # preserve for logging
+    first["retrieval_pos"] = int(first.get("retrieval_pos", 0))
     selected.append(first)
 
     while remaining:
@@ -249,7 +262,7 @@ def _rerank_diversity(
 
         chosen = remaining.pop(best_idx)
         chosen["final_score"] = float(best_final)
-        chosen["retrieval_pos"] = int(chosen.get("retrieval_pos", 0))  # preserve for logging
+        chosen["retrieval_pos"] = int(chosen.get("retrieval_pos", 0))
         selected.append(chosen)
 
     return selected
@@ -265,13 +278,6 @@ def _rank_candidates_model(
     """
     Input: candidates in retrieval order [(item_id, retrieval_score), ...]
     Output: list of dicts, sorted by model rank_score desc.
-
-    v4 features:
-    - position (retrieval position)
-    - retrieval_score
-    - is_warm_user
-    - user_click_count
-    - item_age_hours
     """
     enriched = []
     for retrieval_pos, (item_id, retrieval_score) in enumerate(candidates, start=1):
@@ -378,7 +384,7 @@ def get_recommendations(payload: RecommendationRequest):
             if not candidates:
                 raise HTTPException(status_code=400, detail="No candidate items found to recommend.")
 
-            # 1.5) Online features (v4)
+            # 1.5) Online features
             user_click_count = _get_user_click_count(cur, payload.anonymous_id)
             is_warm_user = 1 if user_click_count > 0 else 0
 
@@ -404,8 +410,11 @@ def get_recommendations(payload: RecommendationRequest):
             ranked_ids = [e["item_id"] for e in ranked]
             titles = _fetch_titles_for_items(cur, ranked_ids)
 
-            # 2.5) Diversity re-rank (stable for cold users)
+            # 2.5) Diversity re-rank
             ranked = _rerank_diversity(ranked, titles, lambda_diversity=0.10, penalty_cap=0.30)
+
+            # ✅ FK safety: ensure session exists before logging impression
+            _ensure_session_exists(cur, payload.session_id)
 
             # 3) Log impression
             cur.execute(
