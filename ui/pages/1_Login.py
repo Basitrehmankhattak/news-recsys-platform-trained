@@ -28,7 +28,7 @@ if submit:
             st.error("Invalid credentials")
         else:
             s=requests.post(f"{API}/session/start",json={
-                "anonymous_id":username,
+                "anonymous_id":"anon",
                 "device_type":"web",
                 "app_version":"streamlit",
                 "user_agent":"ui",

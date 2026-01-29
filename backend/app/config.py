@@ -13,3 +13,4 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+print("DB URL =>", settings.database_url)

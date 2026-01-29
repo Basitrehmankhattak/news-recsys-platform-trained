@@ -9,91 +9,105 @@ load_css()
 
 API = "http://127.0.0.1:8000"
 
-# -----------------------
+# ----------------------------
 # Auth Guard
-# -----------------------
+# ----------------------------
 if "user" not in st.session_state:
     st.switch_page("pages/1_Login.py")
 
-# -----------------------
-# Page Title
-# -----------------------
-st.markdown("<div class='title-center'>🎯 Recommendations</div>", unsafe_allow_html=True)
+st.markdown(
+    "<div class='title-center'>🎯 Recommendations</div>",
+    unsafe_allow_html=True
+)
 
-# -----------------------
-# Category
-# -----------------------
-if "selected_category" in st.session_state:
-    default_category = st.session_state["selected_category"]
-else:
-    default_category = "All"
+# ----------------------------
+# State Init
+# ----------------------------
+if "selected_category" not in st.session_state:
+    st.session_state.selected_category = "All"
 
-categories = ["All", "Technology", "Sports", "Business", "Politics", "Health", "Entertainment"]
+if "rec_items" not in st.session_state:
+    st.session_state.rec_items = None
+
+if "rec_impression_id" not in st.session_state:
+    st.session_state.rec_impression_id = None
+
+# ----------------------------
+# Category UI
+# ----------------------------
+categories = [
+    "All",
+    "Technology",
+    "Sports",
+    "Business",
+    "Politics",
+    "Health",
+    "Entertainment"
+]
 
 selected_category = st.selectbox(
     "📂 Choose Category",
     categories,
-    index=categories.index(default_category)
+    index=categories.index(st.session_state.selected_category)
 )
 
-
-# Reset cache when category changes
-if st.session_state.selected_category != selected_category:
+# ----------------------------
+# Detect Category Change
+# ----------------------------
+if selected_category != st.session_state.selected_category:
     st.session_state.selected_category = selected_category
-    st.session_state.pop("rec_items", None)
-    st.session_state.pop("rec_impression_id", None)
+    st.session_state.rec_items = None
+    st.session_state.rec_impression_id = None
 
-# -----------------------
-# Build Payload
-# -----------------------
-payload = {
-    "session_id": st.session_state.session_id,
-    "user_id": None,
-    "anonymous_id": st.session_state.session_id,
-    "surface": "recommendations",
-    "page_size": 10,
-    "locale": "en-US",
-    "category": None if selected_category == "All" else selected_category
-}
-
-
-# -----------------------
+# ----------------------------
 # Fetch Recommendations
-# -----------------------
-if "rec_items" not in st.session_state:
+# ----------------------------
+if st.session_state.rec_items is None:
 
-    res = requests.post(f"{API}/recommendations", json=payload)
+    payload = {
+        "session_id": st.session_state.session_id,
+        "user_id": None,
+        "anonymous_id": st.session_state.session_id,
+        "surface": "recommendations",
+        "page_size": 10,
+        "locale": "en-US",
+        "category": None if selected_category == "All" else selected_category
+    }
+
+    res = requests.post(
+        f"{API}/recommendations",
+        json=payload,
+        timeout=10
+    )
 
     if res.status_code != 200:
-        st.error("Backend error")
+        st.error(res.text)
         st.stop()
 
     data = res.json()
-    st.session_state.rec_impression_id = data["impression_id"]
     st.session_state.rec_items = data["items"]
+    st.session_state.rec_impression_id = data["impression_id"]
 
-items = st.session_state.rec_items
+items = st.session_state.rec_items or []
 
-# -----------------------
-# Display
-# -----------------------
+# ----------------------------
+# Display + Open Article
+# ----------------------------
 for rec in items:
 
-    with st.container():
-        if st.button(
-            f"{rec['position']}. {rec['title']}",
-            key=f"rec_{rec['item_id']}"
-        ):
+    if st.button(rec["title"], key=f"rec_{rec['item_id']}"):
 
-            requests.post(
-                f"{API}/click",
-                json={
-                    "impression_id": st.session_state.rec_impression_id,
-                    "item_id": rec["item_id"],
-                    "position": rec["position"],
-                    "dwell_ms": 0,
-                    "open_type": "ui"
-                }
-            )
+        # ✅ log click (now always valid)
+        requests.post(
+            f"{API}/click",
+            json={
+                "impression_id": st.session_state.rec_impression_id,
+                "item_id": rec["item_id"],
+                "position": rec["position"],
+                "dwell_ms": 0,
+                "open_type": "ui"
+            }
+        )
 
-            st.success("Clicked!")
+        st.session_state["open_item"] = rec["item_id"]
+        st.switch_page("pages/9_Article.py")

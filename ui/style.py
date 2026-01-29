@@ -2,51 +2,56 @@ import streamlit as st
 
 def load_css():
     st.markdown("""
-        <style>
+    <style>
 
-        /* Main background */
-        .stApp {
-            background-color: #0e1117;
-        }
+    body {
+        background-color:#0e1117;
+        color:white;
+    }
 
-        /* Headings */
-        h1, h2, h3 {
-            color: #ffffff;
-        }
+    .title-center{
+        text-align:center;
+        font-size:34px;
+        font-weight:700;
+        margin-bottom:10px;
+    }
 
-        /* Input boxes */
-        input {
-            background-color: #1f2933 !important;
-            color: white !important;
-            border-radius: 8px !important;
-        }
+    .sub{
+        text-align:center;
+        color:#9aa0a6;
+        margin-bottom:25px;
+    }
 
-        /* Buttons */
-        button {
-            background-color: #4f46e5 !important;
-            color: white !important;
-            border-radius: 8px !important;
-            height: 45px;
-            width: 100%;
-            font-size: 16px;
-        }
+    .card{
+        background:#1f2933;
+        padding:14px;
+        border-radius:12px;
+        margin-bottom:12px;
+        box-shadow:0 0 6px rgba(0,0,0,0.4);
+    }
 
-        button:hover {
-            background-color: #6366f1 !important;
-        }
+    button[kind="secondary"]{
+        width:100%;
+        background:#2563eb;
+        color:white;
+        border-radius:8px;
+        padding:8px;
+    }
 
-        /* Sidebar */
-        section[data-testid="stSidebar"] {
-            background-color: #111827;
-        }
+    button:hover{
+        background:#1d4ed8;
+        color:white;
+    }
 
-        /* Cards */
-        .card {
-            background-color: #1f2933;
-            padding: 20px;
-            border-radius: 12px;
-            margin-bottom: 15px;
-        }
+    .stTextInput input{
+        border-radius:8px;
+    }
 
-        </style>
+    .stButton button{
+        width:100%;
+        border-radius:10px;
+        font-weight:600;
+    }
+
+    </style>
     """, unsafe_allow_html=True)

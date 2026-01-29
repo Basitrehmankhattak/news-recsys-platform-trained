@@ -12,8 +12,14 @@ API = "http://127.0.0.1:8000"
 # -----------------------
 # Auth Guard
 # -----------------------
-if "session_id" not in st.session_state:
+if "user" not in st.session_state:
     st.switch_page("pages/1_Login.py")
+
+# -----------------------
+# Refresh Button
+# -----------------------
+if st.button("🔄 Refresh History"):
+    st.rerun()
 
 # -----------------------
 # Title
@@ -27,6 +33,7 @@ st.markdown(
 # Fetch History
 # -----------------------
 r = requests.get(f"{API}/history/{st.session_state.session_id}")
+
 
 if r.status_code != 200:
     st.error("Failed loading history")
@@ -42,14 +49,11 @@ if not data:
 # Display
 # -----------------------
 for i, h in enumerate(data, start=1):
-    title = h.get("title", "Untitled Article")
-    clicked_at = h.get("clicked_at", "")
-
     st.markdown(
         f"""
         <div class='card'>
-            <b>{i}. {title}</b><br>
-            <small>{clicked_at}</small>
+            <b>{i}. {h['title']}</b><br>
+            <small>{h['clicked_at']}</small>
         </div>
         """,
         unsafe_allow_html=True

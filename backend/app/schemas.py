@@ -1,10 +1,10 @@
 from pydantic import BaseModel
 from typing import Optional, List
-from pydantic import BaseModel, Field
 
 # -------------------------
 # Session schemas
 # -------------------------
+
 class SessionStartRequest(BaseModel):
     anonymous_id: str
     device_type: Optional[str] = None
@@ -20,6 +20,7 @@ class SessionStartResponse(BaseModel):
 # -------------------------
 # Recommendation schemas
 # -------------------------
+
 class RecommendationRequest(BaseModel):
     session_id: str
     user_id: Optional[int] = None
@@ -27,6 +28,10 @@ class RecommendationRequest(BaseModel):
     surface: str = "home"
     page_size: int = 10
     locale: Optional[str] = None
+
+    # ✅ ADD THIS LINE
+    category: Optional[str] = None
+
 
 
 class RecommendedItem(BaseModel):
@@ -42,9 +47,11 @@ class RecommendationResponse(BaseModel):
     impression_id: str
     items: List[RecommendedItem]
 
+
 # -------------------------
 # Click schemas
 # -------------------------
+
 class ClickRequest(BaseModel):
     impression_id: str
     item_id: str
