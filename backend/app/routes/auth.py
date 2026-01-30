@@ -7,7 +7,6 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 
-
 # ------------------
 # Schemas
 # ------------------
@@ -36,6 +35,7 @@ def verify_password(pw, hashed):
 
 @router.post("/register")
 def register_user(req: RegisterRequest):
+
     with get_conn() as conn:
         with conn.cursor() as cur:
 
@@ -49,8 +49,9 @@ def register_user(req: RegisterRequest):
 
             cur.execute(
                 """
-                INSERT INTO auth_users(username, password_hash)
-                VALUES (%s, %s)
+                INSERT INTO auth_users
+                (username, password_hash, is_new_user, created_at)
+                VALUES (%s, %s, TRUE, NOW())
                 """,
                 (req.username, hash_password(req.password))
             )
@@ -65,11 +66,16 @@ def register_user(req: RegisterRequest):
 
 @router.post("/login")
 def login_user(req: LoginRequest):
+
     with get_conn() as conn:
         with conn.cursor() as cur:
 
             cur.execute(
-                "SELECT password_hash FROM auth_users WHERE username=%s",
+                """
+                SELECT password_hash, is_new_user
+                FROM auth_users
+                WHERE username=%s
+                """,
                 (req.username,)
             )
 
@@ -78,7 +84,26 @@ def login_user(req: LoginRequest):
             if not row:
                 raise HTTPException(401, "Invalid username or password")
 
-            if not verify_password(req.password, row[0]):
+            password_hash, is_new_user = row
+
+            if not verify_password(req.password, password_hash):
                 raise HTTPException(401, "Invalid username or password")
 
-    return {"status": "ok"}
+            cur.execute(
+                """
+                UPDATE auth_users
+                SET last_login = NOW(),
+                    is_new_user = FALSE
+                WHERE username=%s
+                """,
+                (req.username,)
+            )
+
+        conn.commit()
+
+    # 🔑 IMPORTANT:
+    # anonymous_id === username
+    return {
+        "status": "ok",
+        "anonymous_id": req.username
+    }

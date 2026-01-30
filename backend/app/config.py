@@ -1,5 +1,7 @@
 from pydantic_settings import BaseSettings
 from dotenv import load_dotenv
+
+# Load .env file
 load_dotenv()
 
 
@@ -13,4 +15,3 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
-print("DB URL =>", settings.database_url)

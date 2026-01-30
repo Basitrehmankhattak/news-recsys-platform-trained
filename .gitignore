@@ -1,10 +1,27 @@
-# Data
-data/
-
 # Python
-.venv/
 __pycache__/
 *.pyc
 
 # Env
 .env
+.venv/
+venv/
+
+# Editors
+.vscode/
+.idea/
+
+# Node
+node_modules/
+
+# Database
+*.db
+*.sqlite
+pgdata/
+
+# Data (IMPORTANT)
+data/
+data/*
+
+# Models (optional extra safety)
+data/models/

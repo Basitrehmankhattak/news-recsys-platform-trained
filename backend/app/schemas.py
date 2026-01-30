@@ -1,9 +1,9 @@
 from pydantic import BaseModel
 from typing import Optional, List
 
-# -------------------------
-# Session schemas
-# -------------------------
+# =====================================================
+# Session Schemas
+# =====================================================
 
 class SessionStartRequest(BaseModel):
     anonymous_id: str
@@ -17,21 +17,20 @@ class SessionStartResponse(BaseModel):
     session_id: str
 
 
-# -------------------------
-# Recommendation schemas
-# -------------------------
+# =====================================================
+# Recommendation Schemas
+# =====================================================
 
 class RecommendationRequest(BaseModel):
     session_id: str
     user_id: Optional[int] = None
-    anonymous_id: Optional[str] = None
+    anonymous_id: str              # 🔒 REQUIRED
     surface: str = "home"
     page_size: int = 10
     locale: Optional[str] = None
 
-    # ✅ ADD THIS LINE
+    # Category filter
     category: Optional[str] = None
-
 
 
 class RecommendedItem(BaseModel):
@@ -48,16 +47,17 @@ class RecommendationResponse(BaseModel):
     items: List[RecommendedItem]
 
 
-# -------------------------
-# Click schemas
-# -------------------------
+# =====================================================
+# Click Schemas
+# =====================================================
 
 class ClickRequest(BaseModel):
     impression_id: str
     item_id: str
     position: int
-    dwell_ms: Optional[int] = None
-    open_type: Optional[str] = None
+    anonymous_id: str
+    dwell_ms: int = 0
+    open_type: str = "ui"
 
 
 class ClickResponse(BaseModel):

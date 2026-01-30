@@ -1,78 +1,99 @@
+import sys
+import os
 import streamlit as st
 import requests
-from auth import is_logged_in, logout
+from style import load_css
+
+# --------------------------------------------------
+# AUTH GUARD
+# --------------------------------------------------
+
+if "logged_in" not in st.session_state or not st.session_state.logged_in:
+    st.switch_page("pages/1_Login.py")
+    st.stop()
+
+if "anonymous_id" not in st.session_state:
+    st.switch_page("pages/1_Login.py")
+    st.stop()
+
+# --------------------------------------------------
+# IMPORTS
+# --------------------------------------------------
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+load_css()
 
 API = "http://127.0.0.1:8000"
+anonymous_id = st.session_state["anonymous_id"]
+session_id = st.session_state["session_id"]
 
-st.set_page_config(page_title="News Recommendation System", layout="wide")
+# --------------------------------------------------
+# PAGE HEADER
+# --------------------------------------------------
 
-# ----------------------------
-# Sidebar
-# ----------------------------
-with st.sidebar:
-    st.title("📰 NewsRecSys")
+st.markdown("<div class='title-center'>🏠 Home</div>", unsafe_allow_html=True)
 
-    if is_logged_in():
-        st.write(f"User: {st.session_state['user']}")
+st.caption(f"Session: {session_id}")
 
-        if st.button("Logout"):
-            logout()
-            st.switch_page("pages/1_Login.py")
+# --------------------------------------------------
+# FETCH RECOMMENDATIONS
+# --------------------------------------------------
 
-# ----------------------------
-# Auth guard
-# ----------------------------
-if not is_logged_in():
-    st.switch_page("pages/1_Login.py")
-
-# ----------------------------
-# Page
-# ----------------------------
-st.title("🏠 Home")
-
-st.write(f"Session ID: {st.session_state.session_id}")
-
-# ----------------------------
-# Fetch Recommendations
-# ----------------------------
 payload = {
-    "session_id": st.session_state.session_id,
-    "user_id": None,
-    "anonymous_id": st.session_state.session_id,
+    "session_id": session_id,
+    "anonymous_id": anonymous_id,
     "surface": "home",
     "page_size": 10,
     "locale": "en-US"
 }
 
-resp = requests.post(f"{API}/recommendations", json=payload)
+with st.spinner("Loading recommendations..."):
+    resp = requests.post(
+        f"{API}/recommendations",
+        json=payload
+    )
 
 if resp.status_code != 200:
     st.error("Backend error")
     st.stop()
 
 data = resp.json()
+items = data["items"]
+impression_id = data["impression_id"]
 
-st.session_state.impression_id = data["impression_id"]
-recs = data["items"]
+# --------------------------------------------------
+# DISPLAY
+# --------------------------------------------------
 
-# ----------------------------
-# Display + Click Tracking
-# ----------------------------
 st.subheader("Recommended for you")
 
-for rec in recs:
-    btn_label = f"{rec['position']}. {rec['title']}"
+if not items:
+    st.info("No recommendations available.")
+    st.stop()
 
-    if st.button(btn_label, key=f"click_{rec['item_id']}"):
-        requests.post(
-            "http://127.0.0.1:8000/click",
-            json={
-                "impression_id": st.session_state.impression_id,
-                "item_id": rec["item_id"],
-                "position": rec["position"],
-                "dwell_ms": 0,
-                "open_type": "ui"
-            }
-        )
+for rec in items:
 
-        st.success(f"Clicked: {rec['item_id']}")
+    with st.container(border=True):
+
+        st.markdown(f"**{rec['title']}**")
+        st.caption(f"Position: {rec['position']}")
+
+        if st.button("Open Article", key=f"home_{rec['item_id']}"):
+
+            # 🔒 LOG CLICK
+            requests.post(
+                f"{API}/click",
+                json={
+                    "impression_id": impression_id,
+                    "item_id": rec["item_id"],
+                    "position": rec["position"],
+                    "anonymous_id": anonymous_id,
+                    "open_type": "home"
+                }
+            )
+
+            st.session_state["open_item"] = rec["item_id"]
+            st.session_state["open_position"] = rec["position"]
+            st.session_state["open_impression"] = impression_id
+
+            st.switch_page("pages/9_Article.py")

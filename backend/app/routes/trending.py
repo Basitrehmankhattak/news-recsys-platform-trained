@@ -1,30 +1,44 @@
 from fastapi import APIRouter
 from backend.app.db import get_conn
 
-router = APIRouter(prefix="/trending", tags=["Trending"])
+router = APIRouter(prefix="/trending", tags=["trending"])
 
-@router.get("/")
-def get_trending(limit: int = 10):
+@router.get("")
+def get_trending(limit: int = 20):
 
     with get_conn() as conn:
-        cur = conn.cursor()
-        cur.execute("""
-            SELECT
-                it.item_id,
-                it.title,
-                COUNT(c.click_id) AS clicks
-            FROM clicks c
-            JOIN impressions_served i
-                ON i.impression_id = c.impression_id
-            JOIN items it
-                ON it.item_id = c.item_id
-            GROUP BY it.item_id, it.title
-            ORDER BY clicks DESC
-            LIMIT %s
-        """, (limit,))
-        rows = cur.fetchall()
+        with conn.cursor() as cur:
+
+            cur.execute("""
+                SELECT
+                    it.item_id,
+                    it.title,
+                    COUNT(c.item_id) AS clicks
+                FROM items it
+                LEFT JOIN clicks c
+                    ON c.item_id = it.item_id
+                GROUP BY it.item_id, it.title
+                ORDER BY
+                    COUNT(c.item_id) DESC,
+                    MOD(
+                        ABS(
+                            hashtext(
+                                it.item_id ||
+                                FLOOR(EXTRACT(EPOCH FROM NOW()) / 1800)::text
+                            )
+                        ),
+                        100000
+                    )
+                LIMIT %s
+            """, (limit,))
+
+            rows = cur.fetchall()
 
     return [
-        {"item_id": r[0], "title": r[1], "clicks": r[2]}
+        {
+            "item_id": r[0],
+            "title": r[1],
+            "clicks": r[2]
+        }
         for r in rows
     ]
